@@ -8,7 +8,7 @@ using System.Xml.Linq;
 namespace CollectionSet
 {    
     [Serializable]
-    public class ColeccionSet<T> : IList<T>, IList, ICollection<T>, ICollection, IEnumerable<T>, IEnumerable, IBindingListView, IBindingList, ICancelAddNew, IRaiseItemChangedEvents, INotifyCollectionChanged, IQueryable<T>, IQueryable, IOrderedQueryable<T>, IOrderedQueryable
+    public class CollectionSet<T> : IList<T>, IList, ICollection<T>, ICollection, IEnumerable<T>, IEnumerable, IBindingListView, IBindingList, ICancelAddNew, IRaiseItemChangedEvents, INotifyCollectionChanged, IQueryable<T>, IQueryable, IOrderedQueryable<T>, IOrderedQueryable
     {
         #region Campos
 
@@ -23,12 +23,11 @@ namespace CollectionSet
         private int _ultimoIndiceCambiado;
         [NonSerialized]
         private PropertyChangedEventHandler? _propertyChanged;
-        private Expression<Func<T, bool>>? _filtroExpression;
                                                                                         
         #endregion
         #region Constructores
                                             
-        public ColeccionSet()
+        public CollectionSet()
         {
             IQueryable iQueryable;
                                             
@@ -43,7 +42,7 @@ namespace CollectionSet
             InicializarConstructor();
         }
                                                                                                         
-        public ColeccionSet(IEnumerable<T> iEnumerable)
+        public CollectionSet(IEnumerable<T> iEnumerable)
         {
             if (iEnumerable is not IQueryable<T> iQueryable)
             {
@@ -380,7 +379,20 @@ namespace CollectionSet
         }
         [NonSerialized]
         private object? _syncRoot;
-                                                                                                        
+
+        public Expression<Func<T, bool>>? FilterExpression
+        {
+            get
+            {
+                return _filterExpression;
+            }
+            set
+            {
+                Filter = _iExpressionSerializer.ToString(value);
+            }
+        }
+        private Expression<Func<T, bool>>? _filterExpression;
+
         public string? Filter
         {
             get
@@ -389,40 +401,37 @@ namespace CollectionSet
             }
             set
             {
-                if (_filter != value)
+                if (string.IsNullOrWhiteSpace(value))
                 {
-                    if (string.IsNullOrEmpty(value))
-                    {
-                        RemoveFilter();
-                    }
-                    else
-                    {
-                        ComprobarReentradaColeccionCambiada();
-                        EndNew(_indiceAgregarNuevo);
-                        _filtroExpression = _iExpressionSerializer.ToExpression<Expression<Func<T, bool>>>(XElement.Parse(value));
-                        
-                        if (_filtroExpression != null)
-                        {
-                            var iQueryable = _elementosOriginales.AsQueryable().Where(_filtroExpression);
+                    RemoveFilter();
+                }
+                else
+                {
+                    ComprobarReentradaColeccionCambiada();
+                    EndNew(_indiceAgregarNuevo);
+                    _filterExpression = _iExpressionSerializer.ToExpression<Expression<Func<T, bool>>>(XElement.Parse(value));
 
-                            if (_isSorted && _sortDescriptions != null)
-                            {
-                                Ejecutar(iQueryable.OrderBy(_sortDescriptions), false);
-                            }
-                            else if (_isSorted && _sortProperty != null)
-                            {
-                                Ejecutar(iQueryable.OrderBy(_sortProperty, _sortDirection), false);
-                            }
-                            else
-                            {
-                                Ejecutar(iQueryable, false);
-                            }
+                    if (_filterExpression != null)
+                    {
+                        var iQueryable = _elementosOriginales.AsQueryable().Where(_filterExpression);
+
+                        if (_isSorted && _sortDescriptions != null)
+                        {
+                            Ejecutar(iQueryable.OrderBy(_sortDescriptions), false);
                         }
-                                            
-                        _filter = value;
-                        _estaFiltrado = true;
-                        SobreColeccionReinicializada();
+                        else if (_isSorted && _sortProperty != null)
+                        {
+                            Ejecutar(iQueryable.OrderBy(_sortProperty, _sortDirection), false);
+                        }
+                        else
+                        {
+                            Ejecutar(iQueryable, false);
+                        }
                     }
+
+                    _filter = value;
+                    _estaFiltrado = true;
+                    SobreColeccionReinicializada();
                 }
             }
         }
@@ -479,7 +488,7 @@ namespace CollectionSet
         private void ValoresPorDefecto()
         {
             _filter = string.Empty;
-            _filtroExpression = null;
+            _filterExpression = null;
             _estaFiltrado = false;
             _sortDirection = ListSortDirection.Ascending;
             _sortProperty = null;
@@ -770,9 +779,9 @@ namespace CollectionSet
                 ComprobarReentradaColeccionCambiada();
                 EndNew(_indiceAgregarNuevo);
                                                                 
-                if (_estaFiltrado && _filtroExpression != null)
+                if (_estaFiltrado && _filterExpression != null)
                 {
-                    Ejecutar(_elementosOriginales.AsQueryable().Where(_filtroExpression), false);
+                    Ejecutar(_elementosOriginales.AsQueryable().Where(_filterExpression), false);
                 }
                 else
                 {
@@ -804,9 +813,9 @@ namespace CollectionSet
                                             
             IQueryable<T> iQueriable;
                                             
-            if (_estaFiltrado && _filtroExpression != null)
+            if (_estaFiltrado && _filterExpression != null)
             {
-                iQueriable = _elementosOriginales.AsQueryable().Where(_filtroExpression);
+                iQueriable = _elementosOriginales.AsQueryable().Where(_filterExpression);
             }
             else
             {
@@ -835,9 +844,9 @@ namespace CollectionSet
                                             
                 IQueryable<T> iQueriable;
                                             
-                if (_estaFiltrado && _filtroExpression != null)
+                if (_estaFiltrado && _filterExpression != null)
                 {
-                    iQueriable = _elementosOriginales.AsQueryable().Where(_filtroExpression);
+                    iQueriable = _elementosOriginales.AsQueryable().Where(_filterExpression);
                 }
                 else
                 {
